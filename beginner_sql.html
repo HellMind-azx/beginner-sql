@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Интенсив — PostgreSQL с нуля</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Unbounded:wght@400;700;900&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1f2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --code-bg: #0d1117;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID NOISE TEXTURE */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    padding: 48px 0 32px;
+    text-align: center;
+    position: relative;
+  }
+
+  .header-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 6px 16px;
+    border-radius: 2px;
+    margin-bottom: 20px;
+    background: rgba(0,212,255,0.05);
+  }
+
+  h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  /* DAYS NAV */
+  .days-nav {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 36px 0;
+  }
+
+  .day-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .day-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,255,0.08);
+  }
+
+  .day-btn.active {
+    border-color: var(--accent);
+    color: var(--bg);
+    background: var(--accent);
+  }
+
+  .day-btn.locked {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .day-btn.completed {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(16,185,129,0.1);
+  }
+
+  /* DAY PANEL */
+  .day-panel { display: none; animation: fadeIn 0.3s ease; }
+  .day-panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTIONS */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+
+  .section-header:hover { background: var(--surface2); }
+
+  .section-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .tag-theory { background: rgba(124,58,237,0.2); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+  .tag-practice { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.25); }
+  .tag-task { background: rgba(245,158,11,0.1); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+  .tag-django { background: rgba(16,185,129,0.1); color: var(--accent3); border: 1px solid rgba(16,185,129,0.3); }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .chevron {
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+
+  .section.open .chevron { transform: rotate(180deg); }
+
+  .section-body {
+    display: none;
+    padding: 20px;
+  }
+
+  .section.open .section-body { display: block; }
+
+  /* THEORY */
+  .theory-block p {
+    font-size: 14px;
+    line-height: 1.75;
+    color: #94a3b8;
+    margin-bottom: 12px;
+  }
+
+  .theory-block strong { color: var(--text); font-weight: 600; }
+
+  .analogy-box {
+    background: rgba(16,185,129,0.07);
+    border-left: 3px solid var(--accent3);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    color: #86efac;
+  }
+
+  .analogy-box .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent3);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+
+  /* CODE BLOCKS */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 10px 0;
+    position: relative;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .kw { color: #ff79c6; }
+  .type { color: #8be9fd; }
+  .str { color: #f1fa8c; }
+  .num { color: #bd93f9; }
+  .comment { color: #6272a4; font-style: italic; }
+  .fn { color: #50fa7b; }
+  .op { color: #ff5555; }
+
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--accent3); border-color: var(--accent3); }
+
+  /* INFO BOX */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 12px 0;
+  }
+
+  .info-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+  }
+
+  .info-card .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .info-card .value {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  /* TASK SECTION */
+  .task-block {
+    background: rgba(245,158,11,0.05);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+
+  .task-block h4 {
+    color: var(--warn);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .task-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+
+  .task-num {
+    min-width: 22px;
+    height: 22px;
+    background: rgba(245,158,11,0.15);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--warn);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ANSWER AREA */
+  .answer-area {
+    margin-top: 16px;
+  }
+
+  .answer-area label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    resize: vertical;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover { background: #33deff; transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .btn-secondary:hover { border-color: var(--muted); color: var(--text); }
+
+  /* FEEDBACK */
+  .feedback {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+    display: none;
+  }
+
+  .feedback.show { display: block; }
+  .feedback.correct {
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #86efac;
+  }
+  .feedback.wrong {
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: #fca5a5;
+  }
+  .feedback.hint {
+    background: rgba(124,58,237,0.08);
+    border: 1px solid rgba(124,58,237,0.25);
+    color: #c4b5fd;
+  }
+
+  /* PROGRESS BAR */
+  .progress-wrap {
+    margin: 0 0 32px;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* DAY HEADER */
+  .day-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .day-number {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 42px;
+    font-weight: 900;
+    color: var(--border);
+    line-height: 1;
+    min-width: 70px;
+  }
+
+  .day-info h2 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  .day-info p {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .day-locked-msg {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .day-locked-msg .lock-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+
+  .day-locked-msg h3 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  /* SCHEMA VISUALIZER */
+  .schema-viz {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+
+  .schema-table {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--accent2);
+    border-radius: 6px;
+    overflow: hidden;
+    min-width: 200px;
+    margin: 8px;
+    vertical-align: top;
+  }
+
+  .schema-table-name {
+    background: rgba(124,58,237,0.2);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #a78bfa;
+    letter-spacing: 0.5px;
+  }
+
+  .schema-field {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .schema-field .field-name { color: var(--text); }
+  .schema-field .field-type { color: var(--accent); }
+  .schema-field.pk .field-name { color: var(--warn); }
+  .schema-field.pk::before {
+    content: '🔑';
+    font-size: 10px;
+    margin-right: -8px;
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+    margin-top: 48px;
+  }
+
+  /* UNLOCK ANIMATION */
+  @keyframes unlockPulse {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+    70% { box-shadow: 0 0 0 12px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+
+  .just-unlocked { animation: unlockPulse 0.8s ease; }
+
+  /* CHECKLIST */
+  .checklist { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #94a3b8;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .check-item:hover { border-color: var(--accent); color: var(--text); }
+  .check-item.checked { color: var(--accent3); border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); }
+
+  .check-box {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    transition: all 0.15s;
+  }
+
+  .check-item.checked .check-box {
+    background: var(--accent3);
+    border-color: var(--accent3);
+    color: var(--bg);
+  }
+
+  @media (max-width: 640px) {
+    .day-number { font-size: 28px; min-width: 50px; }
+    .days-nav { gap: 6px; }
+    .day-btn { padding: 6px 12px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="header-badge">PostgreSQL · Интенсив · 5 дней</div>
+    <h1>SQL с нуля</h1>
+    <p class="subtitle">Практический курс для Django-разработчиков · Senior Backend подход</p>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span>ПРОГРЕСС КУРСА</span>
+      <span id="progress-text">День 1 / 5</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width: 20%"></div>
+    </div>
+  </div>
+
+  <!-- DAYS NAV -->
+  <div class="days-nav">
+    <button class="day-btn active" onclick="switchDay(1, this)">День 1</button>
+    <button class="day-btn locked" id="btn-day2" onclick="switchDay(2, this)">День 2</button>
+    <button class="day-btn locked" id="btn-day3" onclick="switchDay(3, this)">День 3</button>
+    <button class="day-btn locked" id="btn-day4" onclick="switchDay(4, this)">День 4</button>
+    <button class="day-btn locked" id="btn-day5" onclick="switchDay(5, this)">День 5</button>
+  </div>
+
+  <!-- ==================== DAY 1 ==================== -->
+  <div class="day-panel active" id="day-1">
+    <div class="day-header">
+      <div class="day-number">01</div>
+      <div class="day-info">
+        <h2>Основы и DDL</h2>
+        <p>Data Definition Language · CREATE TABLE · Типы данных · Ограничения</p>
+      </div>
+    </div>
+
+    <!-- THEORY -->
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">Что такое SQL и DDL?</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="theory-block">
+          <p><strong>SQL</strong> — язык для общения с базой данных. Он делится на 3 части:</p>
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="label">DDL</div>
+              <div class="value">Data Definition Language<br><span style="color:var(--muted);font-size:12px">CREATE, ALTER, DROP — создаём структуру</span></div>
+            </div>
+            <div class="info-card">
+              <div class="label">DML</div>
+              <div class="value">Data Manipulation Language<br><span style="color:var(--muted);font-size:12px">INSERT, UPDATE, DELETE, SELECT — работаем с данными</span></div>
+            </div>
+            <div class="info-card">
+              <div class="label">DCL</div>
+              <div class="value">Data Control Language<br><span style="color:var(--muted);font-size:12px">GRANT, REVOKE — права доступа</span></div>
+            </div>
+          </div>
+
+          <p>Сегодня — только DDL. Это аналог <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:12px">models.py</code> в Django. Ты описываешь структуру таблиц вручную, без ORM.</p>
+
+          <div class="analogy-box">
+            <div class="label">🐍 Django аналогия</div>
+            Django <code>class Post(models.Model)</code> = SQL <code>CREATE TABLE post (...)</code><br>
+            Django <code>CharField(max_length=200)</code> = SQL <code>VARCHAR(200)</code><br>
+            Django <code>null=False</code> = SQL <code>NOT NULL</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATA TYPES -->
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">Ключевые типы данных PostgreSQL</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="label">Текст</div>
+            <div class="value" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2">
+              <span style="color:var(--accent)">VARCHAR(n)</span> — строка до n символов<br>
+              <span style="color:var(--accent)">TEXT</span> — строка любой длины<br>
+              <span style="color:var(--accent)">CHAR(n)</span> — фиксированная длина
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="label">Числа</div>
+            <div class="value" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2">
+              <span style="color:var(--accent)">INTEGER</span> — целое число<br>
+              <span style="color:var(--accent)">BIGINT</span> — большое целое<br>
+              <span style="color:var(--accent)">NUMERIC(p,s)</span> — точное дробное
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="label">Дата / Время</div>
+            <div class="value" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2">
+              <span style="color:var(--accent)">DATE</span> — только дата<br>
+              <span style="color:var(--accent)">TIMESTAMP</span> — дата + время<br>
+              <span style="color:var(--accent)">TIMESTAMPTZ</span> — + часовой пояс ✓
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="label">Прочее</div>
+            <div class="value" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2">
+              <span style="color:var(--accent)">BOOLEAN</span> — true/false<br>
+              <span style="color:var(--accent)">SERIAL</span> — авто-инкремент<br>
+              <span style="color:var(--accent)">UUID</span> — уникальный ID
+            </div>
+          </div>
+        </div>
+        <div class="analogy-box">
+          <div class="label">🐍 Django аналогия</div>
+          <code>models.CharField</code> → <code>VARCHAR(n)</code><br>
+          <code>models.TextField</code> → <code>TEXT</code><br>
+          <code>models.IntegerField</code> → <code>INTEGER</code><br>
+          <code>models.DateTimeField(auto_now_add=True)</code> → <code>TIMESTAMPTZ DEFAULT NOW()</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSTRAINTS -->
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">Ограничения (Constraints)</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="theory-block">
+          <div class="checklist">
+            <div class="check-item" onclick="this.classList.toggle('checked');this.querySelector('.check-box').textContent=this.classList.contains('checked')?'✓':''">
+              <div class="check-box"></div>
+              <div><strong>PRIMARY KEY</strong> — уникальный идентификатор строки. Каждая таблица должна иметь один. Django: <code style="color:var(--accent3)">id = models.AutoField(primary_key=True)</code></div>
+            </div>
+            <div class="check-item" onclick="this.classList.toggle('checked');this.querySelector('.check-box').textContent=this.classList.contains('checked')?'✓':''">
+              <div class="check-box"></div>
+              <div><strong>NOT NULL</strong> — поле не может быть пустым. Django: <code style="color:var(--accent3)">null=False</code> (по умолчанию)</div>
+            </div>
+            <div class="check-item" onclick="this.classList.toggle('checked');this.querySelector('.check-box').textContent=this.classList.contains('checked')?'✓':''">
+              <div class="check-box"></div>
+              <div><strong>UNIQUE</strong> — значение уникально в колонке. Django: <code style="color:var(--accent3)">unique=True</code></div>
+            </div>
+            <div class="check-item" onclick="this.classList.toggle('checked');this.querySelector('.check-box').textContent=this.classList.contains('checked')?'✓':''">
+              <div class="check-box"></div>
+              <div><strong>DEFAULT</strong> — значение по умолчанию. Django: <code style="color:var(--accent3)">default=...</code></div>
+            </div>
+            <div class="check-item" onclick="this.classList.toggle('checked');this.querySelector('.check-box').textContent=this.classList.contains('checked')?'✓':''">
+              <div class="check-box"></div>
+              <div><strong>CHECK</strong> — произвольное условие. Django: <code style="color:var(--accent3)">validators=[...]</code></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRACTICE -->
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-practice">Практика</span>
+        <span class="section-title">SQL-команды для отработки</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Запусти PostgreSQL (psql или DBeaver) и выполни по порядку:</p>
+
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- 1. Создаём базу данных для блога</span>
+<span class="kw">CREATE DATABASE</span> blog_db;
+<span class="kw">\c</span> blog_db  <span class="comment">-- подключаемся (в psql)</span>
+
+<span class="comment">-- 2. Создаём таблицу пользователей</span>
+<span class="kw">CREATE TABLE</span> users (
+    id        <span class="type">SERIAL</span>        <span class="kw">PRIMARY KEY</span>,
+    username  <span class="type">VARCHAR(50)</span>   <span class="kw">NOT NULL UNIQUE</span>,
+    email     <span class="type">VARCHAR(255)</span>  <span class="kw">NOT NULL UNIQUE</span>,
+    bio       <span class="type">TEXT</span>,
+    is_active <span class="type">BOOLEAN</span>       <span class="kw">DEFAULT</span> <span class="kw">TRUE</span>,
+    joined_at <span class="type">TIMESTAMPTZ</span>   <span class="kw">DEFAULT NOW</span>()
+);
+
+<span class="comment">-- 3. Смотрим структуру таблицы</span>
+<span class="kw">\d</span> users</code></pre>
+
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- 4. Создаём таблицу статей (посмотрим на CHECK)</span>
+<span class="kw">CREATE TABLE</span> posts (
+    id           <span class="type">SERIAL</span>       <span class="kw">PRIMARY KEY</span>,
+    title        <span class="type">VARCHAR(200)</span> <span class="kw">NOT NULL</span>,
+    slug         <span class="type">VARCHAR(200)</span> <span class="kw">NOT NULL UNIQUE</span>,
+    content      <span class="type">TEXT</span>         <span class="kw">NOT NULL</span>,
+    status       <span class="type">VARCHAR(20)</span>  <span class="kw">NOT NULL DEFAULT</span> <span class="str">'draft'</span>
+                 <span class="kw">CHECK</span> (status <span class="kw">IN</span> (<span class="str">'draft'</span>, <span class="str">'published'</span>, <span class="str">'archived'</span>)),
+    views_count  <span class="type">INTEGER</span>      <span class="kw">DEFAULT</span> <span class="num">0</span>,
+    published_at <span class="type">TIMESTAMPTZ</span>,
+    created_at   <span class="type">TIMESTAMPTZ</span>  <span class="kw">DEFAULT NOW</span>()
+);
+
+<span class="comment">-- 5. Создаём таблицу тегов</span>
+<span class="kw">CREATE TABLE</span> tags (
+    id   <span class="type">SERIAL</span>      <span class="kw">PRIMARY KEY</span>,
+    name <span class="type">VARCHAR(50)</span> <span class="kw">NOT NULL UNIQUE</span>
+);</code></pre>
+
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- 6. Если допустил ошибку — можно удалить и пересоздать</span>
+<span class="kw">DROP TABLE IF EXISTS</span> posts;
+
+<span class="comment">-- 7. Добавить колонку к существующей таблице</span>
+<span class="kw">ALTER TABLE</span> users <span class="kw">ADD COLUMN</span> avatar_url <span class="type">TEXT</span>;
+
+<span class="comment">-- 8. Список всех таблиц в psql</span>
+<span class="kw">\dt</span></code></pre>
+
+        <div class="analogy-box">
+          <div class="label">🐍 Что это значит в Django</div>
+          Когда ты запускаешь <code>python manage.py migrate</code>, Django под капотом выполняет именно эти <code>CREATE TABLE</code> команды. Сейчас ты делаешь то, что Django скрывал от тебя!
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEMA VISUALIZER -->
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-django">Схема</span>
+        <span class="section-title">Визуализация спроектированных таблиц</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="schema-viz">
+          <div class="schema-table">
+            <div class="schema-table-name">users</div>
+            <div class="schema-field pk"><span class="field-name">id</span><span class="field-type">SERIAL</span></div>
+            <div class="schema-field"><span class="field-name">username</span><span class="field-type">VARCHAR(50)</span></div>
+            <div class="schema-field"><span class="field-name">email</span><span class="field-type">VARCHAR(255)</span></div>
+            <div class="schema-field"><span class="field-name">bio</span><span class="field-type">TEXT</span></div>
+            <div class="schema-field"><span class="field-name">is_active</span><span class="field-type">BOOLEAN</span></div>
+            <div class="schema-field"><span class="field-name">joined_at</span><span class="field-type">TIMESTAMPTZ</span></div>
+          </div>
+          <div class="schema-table">
+            <div class="schema-table-name">posts</div>
+            <div class="schema-field pk"><span class="field-name">id</span><span class="field-type">SERIAL</span></div>
+            <div class="schema-field"><span class="field-name">title</span><span class="field-type">VARCHAR(200)</span></div>
+            <div class="schema-field"><span class="field-name">slug</span><span class="field-type">VARCHAR(200)</span></div>
+            <div class="schema-field"><span class="field-name">content</span><span class="field-type">TEXT</span></div>
+            <div class="schema-field"><span class="field-name">status</span><span class="field-type">VARCHAR(20)</span></div>
+            <div class="schema-field"><span class="field-name">views_count</span><span class="field-type">INTEGER</span></div>
+            <div class="schema-field"><span class="field-name">published_at</span><span class="field-type">TIMESTAMPTZ</span></div>
+            <div class="schema-field"><span class="field-name">created_at</span><span class="field-type">TIMESTAMPTZ</span></div>
+          </div>
+          <div class="schema-table">
+            <div class="schema-table-name">tags</div>
+            <div class="schema-field pk"><span class="field-name">id</span><span class="field-type">SERIAL</span></div>
+            <div class="schema-field"><span class="field-name">name</span><span class="field-type">VARCHAR(50)</span></div>
+          </div>
+          <div class="schema-table">
+            <div class="schema-table-name">comments</div>
+            <div class="schema-field pk"><span class="field-name">id</span><span class="field-type">SERIAL</span></div>
+            <div class="schema-field"><span class="field-name">body</span><span class="field-type">TEXT</span></div>
+            <div class="schema-field"><span class="field-name">is_approved</span><span class="field-type">BOOLEAN</span></div>
+            <div class="schema-field"><span class="field-name">created_at</span><span class="field-type">TIMESTAMPTZ</span></div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px">🔑 = PRIMARY KEY &nbsp;·&nbsp; Связи между таблицами добавим на Дне 3</p>
+      </div>
+    </div>
+
+    <!-- TASK -->
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-task">Задание</span>
+        <span class="section-title">Контрольное задание Дня 1 — Разблокирует День 2</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="task-block">
+          <h4>📋 Задача: Спроектируй схему блога</h4>
+          <ul class="task-list">
+            <li><div class="task-num">1</div><span>Создай таблицу <strong>categories</strong> (категории постов): id, name (уникальное), description (может быть NULL), created_at</span></li>
+            <li><div class="task-num">2</div><span>Создай таблицу <strong>profiles</strong> (расширенный профиль пользователя): id, full_name, website, twitter_handle, birth_date типа DATE</span></li>
+            <li><div class="task-num">3</div><span>В таблице <strong>profiles</strong> добавь CHECK-ограничение: twitter_handle должен начинаться с '@' — подсказка: <code style="color:var(--accent)">CHECK (twitter_handle LIKE '@%')</code></span></li>
+          </ul>
+        </div>
+
+        <div class="answer-area">
+          <label>Вставь свой SQL код:</label>
+          <textarea id="task1-answer" placeholder="CREATE TABLE categories (&#10;    id ...&#10;    ...&#10;);&#10;&#10;CREATE TABLE profiles (&#10;    ...&#10;);"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="checkTask1()">Проверить →</button>
+            <button class="btn btn-secondary" onclick="showHint1()">Подсказка</button>
+          </div>
+        </div>
+
+        <div class="feedback" id="task1-feedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DAY 2 ==================== -->
+  <div class="day-panel" id="day-2">
+    <div class="day-header">
+      <div class="day-number">02</div>
+      <div class="day-info">
+        <h2>DML — Работа с данными</h2>
+        <p>INSERT · UPDATE · DELETE · SELECT · WHERE</p>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">INSERT — добавляем данные</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="theory-block">
+          <div class="analogy-box">
+            <div class="label">🐍 Django аналогия</div>
+            <code>User.objects.create(username="john")</code> = <code>INSERT INTO users (username) VALUES ('john')</code>
+          </div>
+        </div>
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- Одна запись</span>
+<span class="kw">INSERT INTO</span> users (username, email, bio)
+<span class="kw">VALUES</span> (<span class="str">'john_doe'</span>, <span class="str">'john@example.com'</span>, <span class="str">'Backend разработчик'</span>);
+
+<span class="comment">-- Несколько записей сразу</span>
+<span class="kw">INSERT INTO</span> users (username, email) <span class="kw">VALUES</span>
+    (<span class="str">'alice'</span>,   <span class="str">'alice@example.com'</span>),
+    (<span class="str">'bob'</span>,     <span class="str">'bob@example.com'</span>),
+    (<span class="str">'charlie'</span>, <span class="str">'charlie@example.com'</span>);
+
+<span class="comment">-- Вставить и сразу вернуть созданный ID</span>
+<span class="kw">INSERT INTO</span> posts (title, slug, content)
+<span class="kw">VALUES</span> (<span class="str">'Мой первый пост'</span>, <span class="str">'my-first-post'</span>, <span class="str">'Привет мир!'</span>)
+<span class="kw">RETURNING</span> id, created_at; <span class="comment">-- PostgreSQL-фича!</span></code></pre>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">SELECT и WHERE — выборка и фильтрация</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="analogy-box">
+          <div class="label">🐍 Django аналогия</div>
+          <code>Post.objects.all()</code> → <code>SELECT * FROM posts</code><br>
+          <code>Post.objects.get(id=1)</code> → <code>SELECT * FROM posts WHERE id = 1</code><br>
+          <code>Post.objects.filter(status='published')</code> → <code>SELECT * FROM posts WHERE status = 'published'</code><br>
+          <code>Post.objects.filter(title__contains='SQL')</code> → <code>SELECT * FROM posts WHERE title LIKE '%SQL%'</code>
+        </div>
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- Все записи</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users;
+
+<span class="comment">-- Конкретные колонки</span>
+<span class="kw">SELECT</span> id, username, email <span class="kw">FROM</span> users;
+
+<span class="comment">-- Фильтры</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">WHERE</span> status = <span class="str">'published'</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">WHERE</span> views_count > <span class="num">100</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">WHERE</span> title <span class="kw">LIKE</span> <span class="str">'%Python%'</span>; <span class="comment">-- % = любые символы</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">WHERE</span> status <span class="kw">IN</span> (<span class="str">'draft'</span>, <span class="str">'archived'</span>);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">WHERE</span> views_count <span class="kw">BETWEEN</span> <span class="num">50</span> <span class="kw">AND</span> <span class="num">500</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users  <span class="kw">WHERE</span> bio <span class="kw">IS NULL</span>;    <span class="comment">-- NULL проверка!</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users  <span class="kw">WHERE</span> bio <span class="kw">IS NOT NULL</span>;
+
+<span class="comment">-- Сортировка и лимит</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">ORDER BY</span> created_at <span class="kw">DESC LIMIT</span> <span class="num">10</span>;</code></pre>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-practice">Практика</span>
+        <span class="section-title">UPDATE и DELETE</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="analogy-box">
+          <div class="label">🐍 Django аналогия</div>
+          <code>Post.objects.filter(id=1).update(status='published')</code> → <code>UPDATE posts SET status='published' WHERE id=1</code><br>
+          <code>Post.objects.filter(status='draft').delete()</code> → <code>DELETE FROM posts WHERE status='draft'</code>
+        </div>
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- UPDATE — всегда используй WHERE!</span>
+<span class="kw">UPDATE</span> posts
+<span class="kw">SET</span>    status = <span class="str">'published'</span>, published_at = <span class="fn">NOW</span>()
+<span class="kw">WHERE</span>  id = <span class="num">1</span>;
+
+<span class="comment">-- Обновить несколько полей</span>
+<span class="kw">UPDATE</span> users
+<span class="kw">SET</span>    bio = <span class="str">'Обновлённое описание'</span>, is_active = <span class="kw">TRUE</span>
+<span class="kw">WHERE</span>  username = <span class="str">'john_doe'</span>
+<span class="kw">RETURNING</span> *; <span class="comment">-- вернуть обновлённую строку</span>
+
+<span class="comment">-- DELETE — ОБЯЗАТЕЛЬНО с WHERE, иначе удалишь всё!</span>
+<span class="kw">DELETE FROM</span> posts <span class="kw">WHERE</span> status = <span class="str">'archived'</span>;
+<span class="kw">DELETE FROM</span> users <span class="kw">WHERE</span> id = <span class="num">5</span>;</code></pre>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-task">Задание</span>
+        <span class="section-title">Контрольное задание Дня 2 — Разблокирует День 3</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="task-block">
+          <h4>📋 Задача: Наполни блог и сделай выборки</h4>
+          <ul class="task-list">
+            <li><div class="task-num">1</div><span>Вставь 3 пользователей одним <code style="color:var(--accent)">INSERT</code></span></li>
+            <li><div class="task-num">2</div><span>Вставь 5 постов: 2 со статусом 'published', 2 'draft', 1 'archived'</span></li>
+            <li><div class="task-num">3</div><span>Напиши SELECT который находит все посты, у которых title содержит букву 'а' И views_count больше 0</span></li>
+            <li><div class="task-num">4</div><span>Обнови все 'draft' посты — установи views_count = 0 (они же не опубликованы)</span></li>
+          </ul>
+        </div>
+        <div class="answer-area">
+          <label>Вставь свой SQL код:</label>
+          <textarea id="task2-answer" placeholder="-- INSERT пользователей...&#10;&#10;-- INSERT постов...&#10;&#10;-- SELECT с фильтром...&#10;&#10;-- UPDATE..."></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="checkTask2()">Проверить →</button>
+            <button class="btn btn-secondary" onclick="showHint2()">Подсказка</button>
+          </div>
+        </div>
+        <div class="feedback" id="task2-feedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DAY 3 ==================== -->
+  <div class="day-panel" id="day-3">
+    <div class="day-header">
+      <div class="day-number">03</div>
+      <div class="day-info">
+        <h2>Связи таблиц</h2>
+        <p>FOREIGN KEY · Один-к-одному · Один-ко-многим</p>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">Внешние ключи — FOREIGN KEY</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="theory-block">
+          <p>FOREIGN KEY — это ссылка одной таблицы на строку в другой. База сама следит за целостностью: нельзя создать пост с <code style="color:var(--accent);font-family:monospace">author_id = 999</code>, если пользователя с id=999 не существует.</p>
+          <div class="analogy-box">
+            <div class="label">🐍 Django аналогия</div>
+            <code>author = models.ForeignKey(User, on_delete=models.CASCADE)</code><br>→ В SQL это колонка + FOREIGN KEY + ON DELETE CASCADE<br><br>
+            <code>profile = models.OneToOneField(User, ...)</code><br>→ FOREIGN KEY + UNIQUE (уникальный = один-к-одному)
+          </div>
+        </div>
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- ОДИН-КО-МНОГИМ: один user → много posts</span>
+<span class="kw">ALTER TABLE</span> posts
+<span class="kw">ADD COLUMN</span> author_id <span class="type">INTEGER</span> <span class="kw">REFERENCES</span> users(id)
+    <span class="kw">ON DELETE CASCADE</span>;
+    <span class="comment">-- CASCADE = удалить пользователя → удалятся его посты</span>
+    <span class="comment">-- SET NULL  = удалить пользователя → author_id станет NULL</span>
+    <span class="comment">-- RESTRICT  = запретить удаление, если есть посты</span>
+
+<span class="comment">-- ОДИН-К-ОДНОМУ: один user → один profile</span>
+<span class="kw">ALTER TABLE</span> profiles
+<span class="kw">ADD COLUMN</span> user_id <span class="type">INTEGER</span> <span class="kw">UNIQUE</span>
+    <span class="kw">REFERENCES</span> users(id) <span class="kw">ON DELETE CASCADE</span>;
+    <span class="comment">-- UNIQUE делает связь один-к-одному!</span>
+
+<span class="comment">-- Посмотреть все внешние ключи таблицы</span>
+<span class="kw">SELECT</span> conname, contype, pg_get_constraintdef(oid)
+<span class="kw">FROM</span>   pg_constraint
+<span class="kw">WHERE</span>  conrelid = <span class="str">'posts'</span>::regclass;</code></pre>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-task">Задание</span>
+        <span class="section-title">Контрольное задание Дня 3 — Разблокирует День 4</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="task-block">
+          <h4>📋 Задача: Свяжи таблицы</h4>
+          <ul class="task-list">
+            <li><div class="task-num">1</div><span>Добавь <code style="color:var(--accent)">author_id</code> в таблицу posts как FOREIGN KEY на users.id с ON DELETE SET NULL</span></li>
+            <li><div class="task-num">2</div><span>Добавь <code style="color:var(--accent)">post_id</code> в таблицу comments как FOREIGN KEY на posts.id с ON DELETE CASCADE</span></li>
+            <li><div class="task-num">3</div><span>Попробуй вставить пост с несуществующим <code style="color:var(--accent)">author_id = 9999</code> — что произойдёт? Напиши ответ в комментарии.</span></li>
+          </ul>
+        </div>
+        <div class="answer-area">
+          <label>Вставь свой SQL код:</label>
+          <textarea id="task3-answer" placeholder="ALTER TABLE posts ...&#10;&#10;ALTER TABLE comments ...&#10;&#10;-- Результат попытки вставки с author_id=9999:&#10;-- (напиши что произошло)"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="checkTask3()">Проверить →</button>
+            <button class="btn btn-secondary" onclick="showHint3()">Подсказка</button>
+          </div>
+        </div>
+        <div class="feedback" id="task3-feedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DAY 4 ==================== -->
+  <div class="day-panel" id="day-4">
+    <div class="day-header">
+      <div class="day-number">04</div>
+      <div class="day-info">
+        <h2>JOIN — объединение таблиц</h2>
+        <p>INNER JOIN · LEFT JOIN · RIGHT JOIN</p>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">INNER JOIN vs LEFT JOIN</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="theory-block">
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="label">INNER JOIN</div>
+              <div class="value" style="font-size:13px;line-height:1.7">Только строки, у которых есть совпадение в обеих таблицах.<br><span style="color:var(--muted)">Посты БЕЗ автора не попадут в результат.</span></div>
+            </div>
+            <div class="info-card">
+              <div class="label">LEFT JOIN</div>
+              <div class="value" style="font-size:13px;line-height:1.7">Все строки из левой таблицы + совпадения из правой.<br><span style="color:var(--muted)">Посты БЕЗ автора попадут, author = NULL.</span></div>
+            </div>
+          </div>
+          <div class="analogy-box">
+            <div class="label">🐍 Django аналогия</div>
+            <code>Post.objects.select_related('author')</code> → <code>SELECT * FROM posts INNER JOIN users ON posts.author_id = users.id</code><br><br>
+            <code>Post.objects.filter(author__isnull=False)</code> ≈ INNER JOIN (только с автором)
+          </div>
+        </div>
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- INNER JOIN: посты только с авторами</span>
+<span class="kw">SELECT</span>
+    p.id,
+    p.title,
+    p.status,
+    u.username  <span class="kw">AS</span> author_name,
+    u.email     <span class="kw">AS</span> author_email
+<span class="kw">FROM</span>       posts p
+<span class="kw">INNER JOIN</span> users u <span class="kw">ON</span> p.author_id = u.id;
+
+<span class="comment">-- LEFT JOIN: все посты, даже без автора</span>
+<span class="kw">SELECT</span>
+    p.title,
+    u.username <span class="kw">AS</span> author_name  <span class="comment">-- NULL если автора нет</span>
+<span class="kw">FROM</span>      posts p
+<span class="kw">LEFT JOIN</span> users u <span class="kw">ON</span> p.author_id = u.id;
+
+<span class="comment">-- Тройной JOIN: посты + авторы + комментарии</span>
+<span class="kw">SELECT</span>
+    p.title,
+    u.username <span class="kw">AS</span> author,
+    <span class="fn">COUNT</span>(c.id) <span class="kw">AS</span> comment_count
+<span class="kw">FROM</span>      posts p
+<span class="kw">LEFT JOIN</span> users    u <span class="kw">ON</span> p.author_id = u.id
+<span class="kw">LEFT JOIN</span> comments c <span class="kw">ON</span> c.post_id  = p.id
+<span class="kw">GROUP BY</span>  p.id, p.title, u.username;</code></pre>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-task">Задание</span>
+        <span class="section-title">Контрольное задание Дня 4 — Разблокирует День 5</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="task-block">
+          <h4>📋 Задача: Объединяй таблицы</h4>
+          <ul class="task-list">
+            <li><div class="task-num">1</div><span>Выведи все опубликованные посты с именем автора одним запросом (только посты у которых есть автор)</span></li>
+            <li><div class="task-num">2</div><span>Выведи всех пользователей и количество их постов (включая тех, у кого 0 постов)</span></li>
+            <li><div class="task-num">3</div><span>Объясни в комментарии: почему для задания №2 нужен LEFT JOIN, а не INNER JOIN?</span></li>
+          </ul>
+        </div>
+        <div class="answer-area">
+          <label>Вставь свой SQL код:</label>
+          <textarea id="task4-answer" placeholder="-- Задание 1: опубликованные посты с авторами&#10;&#10;-- Задание 2: пользователи + кол-во постов&#10;&#10;-- Задание 3: объяснение LEFT vs INNER..."></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="checkTask4()">Проверить →</button>
+            <button class="btn btn-secondary" onclick="showHint4()">Подсказка</button>
+          </div>
+        </div>
+        <div class="feedback" id="task4-feedback"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DAY 5 ==================== -->
+  <div class="day-panel" id="day-5">
+    <div class="day-header">
+      <div class="day-number">05</div>
+      <div class="day-info">
+        <h2>Агрегация и группировка</h2>
+        <p>COUNT · SUM · AVG · GROUP BY · HAVING</p>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-theory">Теория</span>
+        <span class="section-title">Агрегатные функции</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="analogy-box">
+          <div class="label">🐍 Django аналогия</div>
+          <code>Post.objects.count()</code> → <code>SELECT COUNT(*) FROM posts</code><br>
+          <code>Post.objects.aggregate(Avg('views_count'))</code> → <code>SELECT AVG(views_count) FROM posts</code><br>
+          <code>Post.objects.values('author_id').annotate(c=Count('id'))</code> → <code>SELECT author_id, COUNT(*) FROM posts GROUP BY author_id</code>
+        </div>
+        <pre><button class="copy-btn" onclick="copyCode(this)">COPY</button><code><span class="comment">-- Базовые агрегаты</span>
+<span class="kw">SELECT</span>
+    <span class="fn">COUNT</span>(*),              <span class="comment">-- кол-во строк</span>
+    <span class="fn">SUM</span>(views_count),      <span class="comment">-- сумма просмотров</span>
+    <span class="fn">AVG</span>(views_count),      <span class="comment">-- среднее</span>
+    <span class="fn">MAX</span>(views_count),      <span class="comment">-- максимум</span>
+    <span class="fn">MIN</span>(views_count)       <span class="comment">-- минимум</span>
+<span class="kw">FROM</span> posts;
+
+<span class="comment">-- GROUP BY: кол-во постов по каждому автору</span>
+<span class="kw">SELECT</span>
+    u.username,
+    <span class="fn">COUNT</span>(p.id)    <span class="kw">AS</span> post_count,
+    <span class="fn">SUM</span>(p.views_count) <span class="kw">AS</span> total_views
+<span class="kw">FROM</span>       users u
+<span class="kw">LEFT JOIN</span>  posts p <span class="kw">ON</span> p.author_id = u.id
+<span class="kw">GROUP BY</span>   u.id, u.username
+<span class="kw">ORDER BY</span>   post_count <span class="kw">DESC</span>;
+
+<span class="comment">-- HAVING: фильтрация ПОСЛЕ группировки (WHERE нельзя!)</span>
+<span class="kw">SELECT</span>
+    u.username,
+    <span class="fn">COUNT</span>(p.id) <span class="kw">AS</span> post_count
+<span class="kw">FROM</span>       users u
+<span class="kw">LEFT JOIN</span>  posts p <span class="kw">ON</span> p.author_id = u.id
+<span class="kw">GROUP BY</span>   u.id, u.username
+<span class="kw">HAVING</span>     <span class="fn">COUNT</span>(p.id) > <span class="num">5</span>  <span class="comment">-- только авторы с >5 постами</span>
+<span class="kw">ORDER BY</span>   post_count <span class="kw">DESC</span>;</code></pre>
+
+        <div class="analogy-box">
+          <div class="label">⚡ Ключевое правило</div>
+          <strong>WHERE</strong> фильтрует строки ДО группировки.<br>
+          <strong>HAVING</strong> фильтрует группы ПОСЛЕ группировки.<br>
+          Нельзя писать <code>WHERE COUNT(*) > 5</code> — только <code>HAVING COUNT(*) > 5</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-task">Задание</span>
+        <span class="section-title">Финальное задание Дня 5 🏆</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="task-block">
+          <h4>📋 Финальная задача: Аналитика блога</h4>
+          <ul class="task-list">
+            <li><div class="task-num">1</div><span>Посчитай сколько статей написал каждый автор. Показывай имя автора и количество, отсортируй по убыванию.</span></li>
+            <li><div class="task-num">2</div><span>Выведи только тех авторов, у которых больше 2 постов (используй HAVING)</span></li>
+            <li><div class="task-num">3</div><span>БОНУС: Найди автора с максимальным суммарным количеством просмотров всех его постов</span></li>
+          </ul>
+        </div>
+        <div class="answer-area">
+          <label>Вставь свой SQL код:</label>
+          <textarea id="task5-answer" placeholder="-- Задание 1: статьи по авторам&#10;&#10;-- Задание 2: только авторы с >2 постами&#10;&#10;-- БОНУС: автор с макс просмотрами..."></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="checkTask5()">Проверить →</button>
+            <button class="btn btn-secondary" onclick="showHint5()">Подсказка</button>
+          </div>
+        </div>
+        <div class="feedback" id="task5-feedback"></div>
+      </div>
+    </div>
+
+    <div class="section open">
+      <div class="section-header" onclick="toggleSection(this)">
+        <span class="section-tag tag-django">🏆 Итог</span>
+        <span class="section-title">Что ты теперь умеешь</span>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="section-body">
+        <div class="checklist">
+          <div class="check-item checked"><div class="check-box">✓</div>Проектировать схемы БД с типами данных и ограничениями (DDL)</div>
+          <div class="check-item checked"><div class="check-box">✓</div>Вставлять, обновлять и удалять данные (DML)</div>
+          <div class="check-item checked"><div class="check-box">✓</div>Фильтровать данные с WHERE, LIKE, IN, BETWEEN</div>
+          <div class="check-item checked"><div class="check-box">✓</div>Строить связи через FOREIGN KEY</div>
+          <div class="check-item checked"><div class="check-box">✓</div>Объединять таблицы через INNER JOIN и LEFT JOIN</div>
+          <div class="check-item checked"><div class="check-box">✓</div>Агрегировать данные с GROUP BY и HAVING</div>
+        </div>
+        <div class="analogy-box" style="margin-top:16px">
+          <div class="label">🚀 Следующий уровень</div>
+          Subqueries · CTE (WITH) · Window Functions (ROW_NUMBER, RANK) · EXPLAIN ANALYZE · Индексы · Транзакции
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    SQL Интенсив · PostgreSQL · Senior Backend подход · Сделано с ❤️
+  </footer>
+
+</div>
+
+<script>
+  // State
+  const state = {
+    currentDay: 1,
+    unlockedDays: [1],
+    completedDays: []
+  };
+
+  // Load from localStorage
+  try {
+    const saved = localStorage.getItem('sql_course_state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state.unlockedDays = parsed.unlockedDays || [1];
+      state.completedDays = parsed.completedDays || [];
+    }
+  } catch(e) {}
+
+  function saveState() {
+    try { localStorage.setItem('sql_course_state', JSON.stringify(state)); } catch(e) {}
+  }
+
+  function init() {
+    // Restore unlocked days
+    state.unlockedDays.forEach(d => {
+      const btn = document.getElementById('btn-day' + d);
+      if (btn) btn.classList.remove('locked');
+    });
+    state.completedDays.forEach(d => {
+      const btn = document.querySelector('.day-btn:nth-child(' + d + ')') ||
+                  document.querySelectorAll('.day-btn')[d-1];
+      if (btn) btn.classList.add('completed');
+    });
+    updateProgress();
+  }
+
+  function switchDay(day, btnEl) {
+    if (btnEl.classList.contains('locked')) return;
+    state.currentDay = day;
+
+    document.querySelectorAll('.day-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+
+    document.getElementById('day-' + day).classList.add('active');
+    btnEl.classList.add('active');
+  }
+
+  function toggleSection(header) {
+    header.parentElement.classList.toggle('open');
+  }
+
+  function unlockDay(day) {
+    if (!state.unlockedDays.includes(day)) {
+      state.unlockedDays.push(day);
+      saveState();
+    }
+    const btn = document.getElementById('btn-day' + day);
+    if (btn) {
+      btn.classList.remove('locked');
+      btn.classList.add('just-unlocked');
+      setTimeout(() => btn.classList.remove('just-unlocked'), 1000);
+    }
+  }
+
+  function markCompleted(day) {
+    if (!state.completedDays.includes(day)) {
+      state.completedDays.push(day);
+      saveState();
+    }
+    const btn = document.querySelectorAll('.day-btn')[day-1];
+    if (btn) btn.classList.add('completed');
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const completed = state.completedDays.length;
+    const pct = Math.max(20, (completed / 5) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent =
+      completed >= 5 ? 'Курс завершён! 🏆' : `День ${state.currentDay} / 5`;
+  }
+
+  function showFeedback(id, type, html) {
+    const el = document.getElementById(id);
+    el.className = 'feedback show ' + type;
+    el.innerHTML = html;
+  }
+
+  function copyCode(btn) {
+    const code = btn.nextElementSibling.textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      btn.textContent = 'COPIED!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  // ---- TASK CHECKERS ----
+
+  function checkTask1() {
+    const ans = document.getElementById('task1-answer').value.toLowerCase().replace(/\s+/g,' ');
+    const hasCategories = ans.includes('create table') && ans.includes('categor');
+    const hasProfiles = ans.includes('create table') && ans.includes('profile');
+    const hasCheck = ans.includes('check') && ans.includes('like');
+    const hasDate = ans.includes('date');
+
+    if (hasCategories && hasProfiles && hasCheck && hasDate) {
+      showFeedback('task1-feedback', 'correct',
+        '✅ <strong>Отлично!</strong> Обе таблицы созданы, CHECK-ограничение для twitter_handle присутствует, тип DATE используется. День 2 разблокирован!');
+      markCompleted(1);
+      unlockDay(2);
+    } else if (hasCategories && hasProfiles) {
+      showFeedback('task1-feedback', 'hint',
+        '💡 <strong>Почти!</strong> Таблицы есть, но проверь: добавил ли CHECK для twitter_handle? Используй <code>CHECK (twitter_handle LIKE \'@%\')</code>. И убедись, что birth_date имеет тип DATE.');
+    } else {
+      showFeedback('task1-feedback', 'wrong',
+        '❌ Нужны обе таблицы: <code>categories</code> и <code>profiles</code>. Напиши <code>CREATE TABLE categories (...)</code> и <code>CREATE TABLE profiles (...)</code>');
+    }
+  }
+
+  function showHint1() {
+    showFeedback('task1-feedback', 'hint',
+      `💡 <strong>Подсказка:</strong><br>
+<pre style="margin-top:8px;font-size:12px">CREATE TABLE categories (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);</pre>`);
+  }
+
+  function checkTask2() {
+    const ans = document.getElementById('task2-answer').value.toLowerCase().replace(/\s+/g,' ');
+    const hasInsertUsers = (ans.match(/insert into users/g) || []).length >= 1;
+    const hasInsertPosts = (ans.match(/insert into posts/g) || []).length >= 1;
+    const hasSelect = ans.includes('select') && ans.includes('where');
+    const hasLike = ans.includes('like') || ans.includes('ilike');
+    const hasUpdate = ans.includes('update');
+
+    if (hasInsertUsers && hasInsertPosts && hasSelect && hasUpdate) {
+      showFeedback('task2-feedback', 'correct',
+        '✅ <strong>Великолепно!</strong> INSERT, SELECT с фильтром и UPDATE — всё на месте. День 3 разблокирован!');
+      markCompleted(2);
+      unlockDay(3);
+    } else {
+      let missing = [];
+      if (!hasInsertUsers) missing.push('INSERT пользователей');
+      if (!hasInsertPosts) missing.push('INSERT постов');
+      if (!hasSelect) missing.push('SELECT с WHERE');
+      if (!hasUpdate) missing.push('UPDATE');
+      showFeedback('task2-feedback', 'wrong',
+        `❌ Не хватает: <strong>${missing.join(', ')}</strong>`);
+    }
+  }
+
+  function showHint2() {
+    showFeedback('task2-feedback', 'hint',
+      `💡 Для поиска буквы 'а' в title используй: <code>WHERE title LIKE '%а%' AND views_count > 0</code><br>
+Для UPDATE: <code>UPDATE posts SET views_count = 0 WHERE status = 'draft'</code>`);
+  }
+
+  function checkTask3() {
+    const ans = document.getElementById('task3-answer').value.toLowerCase().replace(/\s+/g,' ');
+    const hasAlterPosts = ans.includes('alter table') && (ans.includes('post') || ans.includes('author'));
+    const hasAlterComments = ans.includes('alter table') && ans.includes('comment');
+    const hasFk = ans.includes('references') || ans.includes('foreign key');
+    const hasError = ans.includes('ошибк') || ans.includes('error') || ans.includes('нарушен') || ans.includes('violat') || ans.includes('нельзя');
+
+    if (hasAlterPosts && hasAlterComments && hasFk && hasError) {
+      showFeedback('task3-feedback', 'correct',
+        '✅ <strong>Правильно!</strong> Оба внешних ключа добавлены. И да — PostgreSQL вернёт ошибку: <code>violates foreign key constraint</code>, потому что пользователя с id=9999 не существует. Это и есть защита целостности данных! День 4 разблокирован!');
+      markCompleted(3);
+      unlockDay(4);
+    } else if (hasAlterPosts && hasAlterComments && hasFk) {
+      showFeedback('task3-feedback', 'hint',
+        '💡 <strong>Почти!</strong> Ключи добавлены верно! Осталось написать что произошло при вставке с author_id=9999. Должна быть ошибка нарушения внешнего ключа.');
+    } else {
+      showFeedback('task3-feedback', 'wrong',
+        '❌ Используй <code>ALTER TABLE posts ADD COLUMN author_id INTEGER REFERENCES users(id) ON DELETE SET NULL</code>');
+    }
+  }
+
+  function showHint3() {
+    showFeedback('task3-feedback', 'hint',
+      `💡 <code>ALTER TABLE comments ADD COLUMN post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE;</code><br>
+При вставке с несуществующим author_id PostgreSQL выдаст: <code>ERROR: insert or update on table "posts" violates foreign key constraint</code>`);
+  }
+
+  function checkTask4() {
+    const ans = document.getElementById('task4-answer').value.toLowerCase().replace(/\s+/g,' ');
+    const hasJoin = ans.includes('join');
+    const hasPublished = ans.includes('published');
+    const hasCount = ans.includes('count');
+    const hasLeft = ans.includes('left join');
+    const hasExplain = ans.includes('left') && (ans.includes('0') || ans.includes('null') || ans.includes('без'));
+
+    if (hasJoin && hasPublished && hasCount && hasLeft) {
+      showFeedback('task4-feedback', 'correct',
+        '✅ <strong>Мощно!</strong> JOIN освоен! LEFT JOIN нужен потому что INNER JOIN не покажет пользователей без постов. LEFT JOIN = "покажи всех пользователей, и добавь посты если они есть". День 5 разблокирован!');
+      markCompleted(4);
+      unlockDay(5);
+    } else {
+      let tips = [];
+      if (!hasJoin) tips.push('используй JOIN для объединения таблиц');
+      if (!hasPublished) tips.push("фильтруй по status = 'published'");
+      if (!hasCount) tips.push('используй COUNT() для подсчёта постов');
+      if (!hasLeft) tips.push('для задания 2 нужен LEFT JOIN');
+      showFeedback('task4-feedback', 'wrong', '❌ Подсказки: ' + tips.join('; '));
+    }
+  }
+
+  function showHint4() {
+    showFeedback('task4-feedback', 'hint',
+      `💡 Задание 2: <code>SELECT u.username, COUNT(p.id) AS post_count FROM users u LEFT JOIN posts p ON p.author_id = u.id GROUP BY u.id, u.username</code>`);
+  }
+
+  function checkTask5() {
+    const ans = document.getElementById('task5-answer').value.toLowerCase().replace(/\s+/g,' ');
+    const hasGroupBy = ans.includes('group by');
+    const hasCount = ans.includes('count');
+    const hasHaving = ans.includes('having');
+    const hasOrder = ans.includes('order by');
+
+    if (hasGroupBy && hasCount && hasHaving && hasOrder) {
+      showFeedback('task5-feedback', 'correct',
+        '🏆 <strong>КУРС ПРОЙДЕН!</strong> Ты освоил GROUP BY, COUNT и HAVING. Теперь ты можешь писать реальные аналитические запросы без ORM. Следующий шаг — CTE, Window Functions и оптимизация запросов!');
+      markCompleted(5);
+      updateProgress();
+    } else {
+      let tips = [];
+      if (!hasGroupBy) tips.push('GROUP BY для группировки по автору');
+      if (!hasCount) tips.push('COUNT(p.id) для подсчёта постов');
+      if (!hasHaving) tips.push('HAVING COUNT(p.id) > 2 для фильтрации групп');
+      if (!hasOrder) tips.push('ORDER BY для сортировки');
+      showFeedback('task5-feedback', 'wrong', '❌ Нужно: ' + tips.join(', '));
+    }
+  }
+
+  function showHint5() {
+    showFeedback('task5-feedback', 'hint',
+      `💡 Задание 2: <code>SELECT u.username, COUNT(p.id) AS cnt FROM users u LEFT JOIN posts p ON p.author_id = u.id GROUP BY u.id, u.username HAVING COUNT(p.id) > 2 ORDER BY cnt DESC</code>`);
+  }
+
+  init();
+</script>
+</body>
+</html>
